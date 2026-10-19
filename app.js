@@ -105,11 +105,21 @@
       overlay(`<h2>${esc(state.paper.label)}</h2><p>This test runs in <strong>full screen</strong>.</p>
         <button class="btn btn-primary" id="btn-fs-go">Enter full screen</button><p class="muted small" style="margin-top:12px">Click anywhere to continue.</p>`);
     };
-    $("#overlay").addEventListener("click", async () => {
-      if (!onStart()) return;
-      if (await enterFullscreen()) hideOverlay(); else flash("Full screen was blocked. Allow full screen for this site and click again.");
-    });
-    document.addEventListener("keydown", async (e) => { if (onStart() && !$("#overlay").hidden && !isFs() && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); if (await enterFullscreen()) hideOverlay(); } });
+    let busy = false;
+    const tryEnter = async () => {
+      if (!onStart() || busy) return; busy = true;
+      const ok = await enterFullscreen(); busy = false;
+      if (ok) { hideOverlay(); return; }
+      const url = location.href;
+      overlay(`<h2>Full screen is blocked in this browser</h2>
+        <p>This test must run in full screen, and the browser you opened the link in does not allow it (this happens in browsers built into apps such as WhatsApp, Teams, Outlook or Claude).</p>
+        <p><strong>Open this link in Google Chrome, Microsoft Edge or Firefox on a laptop or desktop:</strong></p>
+        <p><code style="word-break:break-all">${esc(url)}</code></p>
+        <div class="row-actions" style="justify-content:center"><button class="btn btn-secondary" id="btn-copy-link">Copy link</button><button class="btn btn-primary" id="btn-fs-retry">Try again</button></div>`, true);
+      $("#btn-copy-link").onclick = (ev) => { ev.stopPropagation(); try { navigator.clipboard.writeText(url); } catch (e) { } ev.target.textContent = "Copied!"; };
+    };
+    $("#overlay").addEventListener("click", (ev) => { if (ev.target && ev.target.id === "btn-copy-link") return; tryEnter(); });
+    document.addEventListener("keydown", (e) => { if (onStart() && !$("#overlay").hidden && !isFs() && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); tryEnter(); } });
     const onFsChange = () => { if (!isFs()) showGate(); };
     document.addEventListener("fullscreenchange", onFsChange); document.addEventListener("webkitfullscreenchange", onFsChange);
     showGate();
@@ -234,7 +244,11 @@
     if (!P.requireFullscreen) return true;
     if (isFs()) return true;
     const el = document.documentElement;
-    try { if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: "hide" }); else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen(); } catch (e) { return false; }
+    try {
+      const req = el.requestFullscreen ? el.requestFullscreen({ navigationUI: "hide" }) : (el.webkitRequestFullscreen && el.webkitRequestFullscreen());
+      // some in-app browsers never answer the request: give up after 2.5 s instead of hanging
+      await Promise.race([Promise.resolve(req), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 2500))]);
+    } catch (e) { return false; }
     await new Promise(r => setTimeout(r, 120));
     return isFs();
   }
