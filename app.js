@@ -416,8 +416,10 @@
     r.sections.mcq.forEach(m => {
       doc.ensure(50);
       T(`${m.n}. [${m.topic}] ${m.q}`, 10, "bold");
-      T(`Answer: ${m.chosen || "(not answered)"}`, 10, "normal", m.marks ? GREEN : RED);
-      T(`Correct: ${m.correct}   Marks: ${m.marks}/${m.max}  - ${m.why}`, 9, "italic", GREY); doc.gap(3);
+      T(`Student's answer: ${m.chosen || "(not answered)"}`, 10, "normal", m.marks ? GREEN : RED);
+      T(`Correct answer: ${m.correct}`, 10);
+      T(m.why, 9, "italic", GREY);
+      T(`Marks: ${m.marks} / ${m.max}`, 10, "bold", m.marks ? GREEN : RED); doc.gap(5);
     });
     ["short", "coding", "scenario"].forEach(sec => {
       doc.gap(8); T(`SECTION ${SECTION_LETTER[sec]} - ${S[sec].label.toUpperCase()} (${S[sec].marks} marks each)`, 13, "bold");
@@ -425,14 +427,14 @@
         doc.ensure(80);
         T(`${x.n}. ${x.title}`, 11, "bold");
         T(x.q, 9, "normal", GREY);
-        T(`Marks: ${x.marks} / ${x.max}  (provisional - ${x.note})`, 10, "bold", x.marks >= x.max * 0.75 ? GREEN : x.marks >= x.max * 0.4 ? AMBER : RED);
-        if (x.matched.length) T("Found: " + x.matched.join("; "), 9, "normal", GREEN);
-        if (x.missed.length) T("Missing: " + x.missed.join("; "), 9, "normal", RED);
-        T("Candidate's answer:", 9, "bold");
+        T("Student's answer:", 9, "bold");
         if (sec === "coding") doc.mono(x.answer.trim() || "(blank)", 8, 70); else T(x.answer.trim() || "(blank)", 9);
         T("Model answer:", 9, "bold");
         if (sec === "coding") doc.mono(x.model, 7.5, 60); else T(x.model, 9, "italic", GREY);
-        doc.gap(6);
+        if (x.matched.length) T("Key points found: " + x.matched.join("; "), 9, "normal", GREEN);
+        if (x.missed.length) T("Key points missing: " + x.missed.join("; "), 9, "normal", RED);
+        T(`Marks: ${x.marks} / ${x.max}  (provisional - ${x.note})`, 10, "bold", x.marks >= x.max * 0.75 ? GREEN : x.marks >= x.max * 0.4 ? AMBER : RED);
+        doc.rule(); doc.gap(2);
       });
     });
     state.pdfBlob = doc.blob();
@@ -532,15 +534,18 @@
       </div>
       <p class="muted small">Sections B–D are provisional (key-point matching against the answer key). Review each answer below.</p>
       <h3>Section A – Multiple choice</h3>
-      <table class="res-table"><thead><tr><th>#</th><th>Question</th><th>Candidate</th><th>Correct</th><th>Marks</th></tr></thead><tbody>
-      ${r.sections.mcq.map(m => `<tr class="${m.marks ? "ok" : "bad"}"><td>${m.n}<div class="muted small">${esc(m.topic)}</div></td><td>${esc(m.q)}</td><td>${esc(m.chosen || "—")}</td><td>${esc(m.correct)}<div class="muted small">${esc(m.why)}</div></td><td>${m.marks}/${m.max}</td></tr>`).join("")}
-      </tbody></table>
+      ${r.sections.mcq.map(m => `<div class="card res-item ${m.marks ? "ok" : "bad"}"><div class="q-head"><strong>${m.n}. <span class="muted small">${esc(m.topic)}</span></strong><span class="q-marks">${m.marks}/${m.max}</span></div>
+        <p class="stack-q">${esc(m.q)}</p>
+        <div class="stack"><div class="stack-label">Student's answer</div><div class="${m.marks ? "ans-ok" : "ans-bad"}">${esc(m.chosen || "(not answered)")} ${m.marks ? "✓" : "✗"}</div></div>
+        <div class="stack"><div class="stack-label">Correct answer</div><div>${esc(m.correct)}</div><div class="muted small">${esc(m.why)}</div></div>
+        <div class="stack"><div class="stack-label">Marks</div><div><strong>${m.marks} / ${m.max}</strong></div></div></div>`).join("")}
       ${["short", "coding", "scenario"].map(sec => `<h3>Section ${SECTION_LETTER[sec]} – ${esc(S[sec].label)}</h3>` + r.sections[sec].map(x => `
         <div class="card res-item ${cls(x)}"><div class="q-head"><strong>${x.n}. ${esc(x.title)}</strong><span class="q-marks">${x.marks}/${x.max}</span></div>
-        <p class="small muted">${esc(x.q)}</p>
-        <div class="kp">${x.matched.map(k => `<div class="y">✓ ${esc(k)}</div>`).join("")}${x.missed.map(k => `<div class="n">✕ ${esc(k)}</div>`).join("")}</div>
-        <details open><summary>Candidate's answer</summary><pre class="codeblock">${esc(x.answer.trim() || "(blank)")}</pre></details>
-        <details><summary>Model answer</summary><pre class="codeblock">${esc(x.model)}</pre></details></div>`).join("")).join("")}`;
+        <p class="stack-q">${esc(x.q)}</p>
+        <div class="stack"><div class="stack-label">Student's answer</div><pre class="codeblock">${esc(x.answer.trim() || "(blank)")}</pre></div>
+        <div class="stack"><div class="stack-label">Model answer</div><details><summary>Show model answer</summary><pre class="codeblock">${esc(x.model)}</pre></details></div>
+        <div class="stack"><div class="stack-label">Key points</div><div class="kp">${x.matched.map(k => `<div class="y">✓ ${esc(k)}</div>`).join("")}${x.missed.map(k => `<div class="n">✕ ${esc(k)}</div>`).join("")}</div></div>
+        <div class="stack"><div class="stack-label">Marks</div><div><strong>${x.marks} / ${x.max}</strong> <span class="muted small">(provisional)</span></div></div></div>`).join("")).join("")}`;
   }
 
   function renderOrganizerHome() {
