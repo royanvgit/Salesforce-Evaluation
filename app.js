@@ -435,24 +435,45 @@
     if (!E.enabled || !window.emailjs || !E.publicKey || E.publicKey.startsWith("YOUR_")) return { ok: false, error: "EmailJS not configured (see config.js)" };
     try {
       emailjs.init({ publicKey: E.publicKey });
-      const head = [
-        `Candidate: ${r.candidate.name}`, `Email: ${r.candidate.email || "-"}`, `Batch / Class: ${r.candidate.batch || "-"}`,
-        `Paper: ${r.paper}`, `Started: ${new Date(r.startedAt).toLocaleString()}`, `Submitted: ${new Date(r.submittedAt).toLocaleString()}`,
-        `Time used: ${r.timeTaken} (limit ${r.timeLimit})`, "",
-        ...SECTION_ORDER.map(k => `Section ${SECTION_LETTER[k]} ${S[k].label}: ${r.totals[k]}/${S[k].count * S[k].marks}`),
-        `TOTAL SCORE: ${r.total}/${r.maxTotal} = ${r.percentage}%`,
-        `RESULT: ${r.status} (pass mark ${CONFIG.passPercentage}%)`, "",
+      // Email body: candidate details → every question in order with the answer → final result at the end
+      const LINE = "=".repeat(60), line = "-".repeat(60);
+      const ind = (t) => String(t).split("\n").map(l => "    " + l).join("\n");
+      const out = [
+        `${CONFIG.testTitle.toUpperCase()} – RESULT REPORT`, LINE,
+        `Candidate:     ${r.candidate.name}`, `Email:         ${r.candidate.email || "-"}`, `Batch / Class: ${r.candidate.batch || "-"}`,
+        `Paper:         ${r.paper}`, `Started:       ${new Date(r.startedAt).toLocaleString()}`, `Submitted:     ${new Date(r.submittedAt).toLocaleString()}`,
+        `Time used:     ${r.timeTaken} (limit ${r.timeLimit})`, ""
+      ];
+      out.push(LINE, `SECTION A – ${S.mcq.label.toUpperCase()} (${S.mcq.marks} marks each)`, LINE);
+      r.sections.mcq.forEach(m => {
+        out.push(`${m.n}. [${m.topic}] ${m.q}`, `    Candidate's answer: ${m.chosen || "(not answered)"}`, `    Correct answer:     ${m.correct}`,
+          `    Marks: ${m.marks} / ${m.max}   ${m.marks ? "✓ Correct" : "✗ Wrong"}`, "");
+      });
+      ["short", "coding", "scenario"].forEach(sec => {
+        out.push(LINE, `SECTION ${SECTION_LETTER[sec]} – ${S[sec].label.toUpperCase()} (${S[sec].marks} marks each)`, LINE);
+        r.sections[sec].forEach(x => {
+          out.push(`${x.n}. ${x.title}`, ind(x.q), "", "    Candidate's answer:", ind(clip(x.answer, sec === "coding" ? 2500 : 900) || "(blank)"), "",
+            `    Marks: ${x.marks} / ${x.max}  (provisional – ${x.note})`);
+          if (x.matched.length) out.push("    Key points found:   " + x.matched.join("; "));
+          if (x.missed.length) out.push("    Key points missing: " + x.missed.join("; "));
+          out.push(line);
+        });
+        out.push("");
+      });
+      out.push(LINE, "FINAL RESULT", LINE,
+        ...SECTION_ORDER.map(k => `Section ${SECTION_LETTER[k]} – ${S[k].label}: ${r.totals[k]} / ${S[k].count * S[k].marks}`),
+        "", `TOTAL SCORE: ${r.total} / ${r.maxTotal}  =  ${r.percentage}%`,
+        `RESULT:      ${r.status}  (pass mark ${CONFIG.passPercentage}%)`, "",
         `Submission: ${r.submitReason}`,
         `Page swaps: ${r.swaps.length} (allowed ${P.maxPageSwaps})${r.swaps.length ? " – " + r.swaps.map(s => new Date(s.at).toLocaleTimeString() + " " + s.reason).join("; ") : ""}`,
         `Blocked copy/paste/shortcut attempts: ${r.events.filter(e => /blocked/i.test(e.what)).length}`,
-        "Sections B–D are provisional (key-point matching) – please review the answers below.", ""
-      ].join("\n");
-      let rows = "SECTION A – MULTIPLE CHOICE\n" + r.sections.mcq.map(m => `${m.n}: ${m.marks}/${m.max}  (chosen: ${m.chosen || "-"} | correct: ${m.correct})`).join("\n");
-      ["short", "coding", "scenario"].forEach(sec => {
-        rows += `\n\nSECTION ${SECTION_LETTER[sec]} – ${S[sec].label.toUpperCase()}\n` + r.sections[sec].map(x =>
-          `${x.n} ${x.title}: ${x.marks}/${x.max} (${x.note})${x.missed.length ? "\n  Missing: " + x.missed.join("; ") : ""}\n  Answer:\n${clip(x.answer, sec === "coding" ? 2500 : 900) || "(blank)"}\n`).join("\n");
-      });
-      if (rows.length > 42000) rows = rows.slice(0, 42000) + "\n…[truncated – download the PDF from the organizer view]";
+        "Note: Sections B–D are scored provisionally by key-point matching – please review the answers above.");
+      let report = out.join("\n");
+      if (report.length > 45000) {   // keep within the email size limit: trim answers, never the final result
+        const fin = report.slice(report.lastIndexOf(LINE + "\nFINAL RESULT"));
+        report = report.slice(0, 45000 - fin.length - 120) + "\n…[answers truncated – download the PDF from the organizer view]\n\n" + fin;
+      }
+      const rows = report;
       const params = {
         to_email: CONFIG.organizerEmail, candidate_name: r.candidate.name, candidate_email: r.candidate.email || "-",
         candidate_batch: r.candidate.batch || "-", batch: r.candidate.batch || "-",
@@ -463,7 +484,7 @@
         title: `${r.candidate.name} - ${r.paper} - ${r.status} (${r.percentage}%)`,
         subject: `${CONFIG.testTitle}: ${r.candidate.name} - ${r.paper} - ${r.status}`,
         reply_to: r.candidate.email || CONFIG.organizerEmail, time: new Date(r.submittedAt).toLocaleString(),
-        message: head + "\n" + rows,
+        message: report, report,
         paper: r.paper, language: "Salesforce (Apex / LWC)", submitted_at: new Date(r.submittedAt).toLocaleString(),
         mcq_total: `${r.totals.mcq}/${S.mcq.count * S.mcq.marks}`, coding_total: `${r.totals.coding}/${S.coding.count * S.coding.marks}`,
         total: `${r.total}/${r.maxTotal}`, percentage: r.percentage + "%", status: r.status,
