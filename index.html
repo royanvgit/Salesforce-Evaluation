@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Salesforce Developer Evaluation</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand" id="brand">Salesforce Developer Evaluation</div>
+  <div class="top-right">
+    <span id="swap-indicator" class="swap-pill" hidden></span>
+    <div class="timer" title="Time remaining"></div>
+  </div>
+</header>
+
+<main>
+  <!-- Landing: list of papers (organizer) -->
+  <section id="screen-landing" class="screen" hidden>
+    <h1>Salesforce Developer Evaluation</h1>
+    <p class="muted" id="landing-meta"></p>
+    <div id="paper-list" class="card"></div>
+    <p class="small muted">Organizer: open <code>?organizer=1</code> on the candidate's machine to view results stored there.</p>
+  </section>
+
+  <!-- Start: candidate details + rules -->
+  <section id="screen-start" class="screen" hidden>
+    <div class="card narrow">
+      <h1 id="start-paper-label"></h1>
+      <table class="mini-table" id="start-table"></table>
+      <h3>Rules</h3>
+      <ul class="rules" id="rules-list"></ul>
+      <form id="start-form" autocomplete="off">
+        <label>Full name <input id="cand-name" required placeholder="Your full name"></label>
+        <label>Email <input id="cand-email" type="email" placeholder="you@example.com"></label>
+        <label>Batch / Class <input id="cand-batch" required placeholder="e.g. Batch 9"></label>
+        <label class="agree"><input type="checkbox" id="cand-agree" required> I have read the rules and understand that the test will be terminated if I leave the test page more than <span class="max-swaps"></span> times.</label>
+        <button class="btn btn-primary" type="submit">Start test in full screen</button>
+        <p id="start-error" class="error" hidden></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- Resume after reload -->
+  <section id="screen-resume" class="screen" hidden>
+    <div class="card narrow center">
+      <h2>Test in progress</h2>
+      <p id="resume-msg"></p>
+      <button id="btn-resume" class="btn btn-primary">Resume test in full screen</button>
+      <hr>
+      <button id="btn-discard" class="btn btn-ghost small">Organizer: discard this attempt</button>
+    </div>
+  </section>
+
+  <!-- Exam -->
+  <section id="screen-exam" class="screen exam" hidden>
+    <div class="exam-head">
+      <nav class="tabs" id="tabs"></nav>
+      <button id="btn-submit" class="btn btn-primary">Submit test</button>
+    </div>
+    <div id="exam-body"></div>
+    <div class="actions"><button id="btn-prev" class="btn btn-ghost">← Previous section</button><button id="btn-next" class="btn btn-secondary">Next section →</button></div>
+  </section>
+
+  <!-- Submitting -->
+  <section id="screen-grading" class="screen" hidden>
+    <div class="card narrow"><h2>Submitting your answers…</h2><p class="muted">Please wait and do not close this page.</p><pre id="grading-log" class="log"></pre></div>
+  </section>
+
+  <!-- Done -->
+  <section id="screen-done" class="screen" hidden>
+    <div class="card narrow center">
+      <div class="check" id="done-icon">✓</div>
+      <h2 id="done-title"></h2>
+      <div id="done-body"></div>
+      <p class="small muted">You may now close this window.</p>
+      <hr>
+      <button id="btn-organizer" class="btn btn-ghost">Organizer: view results</button>
+    </div>
+  </section>
+
+  <!-- Result (organizer) -->
+  <section id="screen-result" class="screen" hidden>
+    <div class="section-head"><h2>Evaluation Result</h2>
+      <div class="row-actions no-print"><button id="btn-download-pdf" class="btn btn-primary">Download PDF</button><button id="btn-resend" class="btn btn-secondary">Re-send email</button><button id="btn-print" class="btn btn-ghost">Print</button></div></div>
+    <div id="result-body"></div>
+  </section>
+
+  <!-- Organizer home -->
+  <section id="screen-organizer" class="screen" hidden>
+    <h1>Stored results on this device</h1>
+    <div id="stored-list" class="card"></div>
+    <p><a class="btn btn-ghost" href="?">← Back</a></p>
+  </section>
+</main>
+
+<div id="overlay" hidden><div class="card narrow center" id="overlay-card"></div></div>
+<div id="flash" hidden></div>
+
+<script src="minipdf.js"></script>
+<script src="config.js"></script>
+<script src="questions.js"></script>
+<script src="grader.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
