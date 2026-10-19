@@ -91,6 +91,28 @@
     ].map(r => `<li>${r}</li>`).join("");
     if (P.requireFullscreen && !fsSupported()) { $("#start-error").textContent = "This browser cannot run the test in full screen. Please open the link in Chrome, Edge or Firefox on a laptop or desktop."; $("#start-error").hidden = false; $("#start-form button").disabled = true; }
     show("#screen-start");
+    fullscreenGate();
+  }
+
+  // Browsers only allow full screen after a click or key press, so the page opens
+  // with a full-page prompt: the candidate's first click puts it in full screen,
+  // and it stays in full screen from the details form through the whole test.
+  function fullscreenGate() {
+    if (!P.requireFullscreen || !fsSupported()) return;
+    const onStart = () => !$("#screen-start").hidden;
+    const showGate = () => {
+      if (!onStart() || isFs()) return;
+      overlay(`<h2>${esc(state.paper.label)}</h2><p>This test runs in <strong>full screen</strong>.</p>
+        <button class="btn btn-primary" id="btn-fs-go">Enter full screen</button><p class="muted small" style="margin-top:12px">Click anywhere to continue.</p>`);
+    };
+    $("#overlay").addEventListener("click", async () => {
+      if (!onStart()) return;
+      if (await enterFullscreen()) hideOverlay(); else flash("Full screen was blocked. Allow full screen for this site and click again.");
+    });
+    document.addEventListener("keydown", async (e) => { if (onStart() && !$("#overlay").hidden && !isFs() && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); if (await enterFullscreen()) hideOverlay(); } });
+    const onFsChange = () => { if (!isFs()) showGate(); };
+    document.addEventListener("fullscreenchange", onFsChange); document.addEventListener("webkitfullscreenchange", onFsChange);
+    showGate();
   }
   const ordinal = (n) => n + (["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) ? 0 : n % 10] || "th");
 
